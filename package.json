@@ -1,0 +1,24 @@
+{
+  "name": "page-saver-2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "module": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cliqz/adblocker": "^1.4.1",
+    "@cliqz/adblocker-puppeteer": "^1.4.1",
+    "async-get-file": "^1.0.2",
+    "cross-fetch": "^3.0.4",
+    "esm": "^3.2.25",
+    "node-bookmarks-parser": "^2.0.0",
+    "puppeteer": "^2.0.0",
+    "puppeteer-autoscroll-down": "^0.1.2",
+    "puppeteer-cluster": "^0.18.0",
+    "youtube-dl": "^3.0.2"
+  }
+}
