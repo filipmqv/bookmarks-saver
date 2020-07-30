@@ -108,7 +108,10 @@ function updateProgressBar(url) {
 async function downloadYoutube(url, dir, fileName) {
   try {
     updateProgressBar(url)
-    await youtubeDlWrap.execPromise([url, "-f", "best", "-o", `${dir}/${fileName}.mp4`, "--download-archive", "downloaded-videos-archive.txt"])
+    await youtubeDlWrap.execPromise([url,
+      "-f", "best",
+      "-o", `${dir}/${fileName}.mp4`,
+      "--download-archive", "downloaded-videos-archive.txt"])
   } catch (e) {
     errorUrls.push({url: url, error: e.stderr});
   }
