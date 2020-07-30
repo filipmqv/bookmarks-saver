@@ -220,8 +220,8 @@ async function initClusterTask(cluster, blocker) {
   const blocker = await initUblock()
   await initClusterTask(cluster, blocker)
 
-  const l = urls.length
-  console.log("found " + l + " bookmarks")
+  const urlsLength = urls.length
+  console.log("found " + urlsLength + " bookmarks")
   console.log("scrapping pages and preparing list of videos to download");
   for (const [idx, item] of urls.entries()) {
     var dir = directoryFromBookmarks(item.path)
@@ -229,7 +229,7 @@ async function initClusterTask(cluster, blocker) {
       url: item.url,
       dir: dir,
       idx: idx,
-      total: l,
+      total: urlsLength,
       title: cleanTitle(item.title),
     });
   }
@@ -246,6 +246,7 @@ async function initClusterTask(cluster, blocker) {
   }
   bar1.stop();
 
+  // save all errors to file
   let data = JSON.stringify(errorUrls);
   fs.writeFileSync('errors.json', data);
 })();
