@@ -5,7 +5,7 @@ This script downloads all bookmarked pages as PDFs and downloads videos from pag
 Any page or video that failed to be downloaded, will be listed in `errors.json` file in root directory after the script finishes.
 
 ### Install
-Install npm and nodejs first:
+Install npm and nodejs first (example command for Ubuntu):
 ```
 sudo apt install nodejs npm
 ```

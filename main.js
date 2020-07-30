@@ -55,6 +55,10 @@ function flatBookmarks(bookmarks, flatList, root) {
   return flatList;
 }
 
+function pdfFileName(filePath, fileName) {
+  return `${filePath}/${fileName}.pdf`
+}
+
 async function _savePageAsPdf(page, url, fullFileName, idx, total) {
   await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1})
   await page.goto(url, {waitUntil: 'networkidle0'});
@@ -84,10 +88,9 @@ async function _savePageAsPdf(page, url, fullFileName, idx, total) {
 }
 
 async function savePageAsPdf(page, url, filePath, idx, total, title) {
-  const fullFileName = `${filePath}/${title}.pdf`
+  const fullFileName = pdfFileName(filePath, title)
   try {
     if (fs.existsSync(fullFileName)) {
-      console.log(fullFileName + " already exists");
       return
     }
     return await _savePageAsPdf(page, url, fullFileName, idx, total)
@@ -105,7 +108,7 @@ function updateProgressBar(url) {
 async function downloadYoutube(url, dir, fileName) {
   try {
     updateProgressBar(url)
-    await youtubeDlWrap.execPromise([url, "-f", "best", "-o", `${dir}/${fileName}.mp4`])
+    await youtubeDlWrap.execPromise([url, "-f", "best", "-o", `${dir}/${fileName}.mp4`, "--download-archive", "downloaded-videos-archive.txt"])
   } catch (e) {
     errorUrls.push({url: url, error: e.stderr});
   }
@@ -134,7 +137,7 @@ async function supportedSitesRegexes() {
 }
 
 async function downloadPdf(url, dir, title) {
-  const fullFileName = `${dir}/${title}.pdf`
+  const fullFileName = pdfFileName(dir, title)
   if (fs.existsSync(fullFileName)) {
     console.log(fullFileName + " already exists");
     return
