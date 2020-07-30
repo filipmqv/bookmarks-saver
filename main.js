@@ -1,24 +1,36 @@
-// how to run it: node -r esm main.js
+// how to run it: `node -r esm main.js`
 
 import puppeteer from 'puppeteer';
 const { Cluster } = require('puppeteer-cluster');
+const scrollPageToBottom = require('puppeteer-autoscroll-down');
 import { PuppeteerBlocker } from '@cliqz/adblocker-puppeteer';
 import fetch from 'cross-fetch'; // required 'fetch' for @cliqz/adblocker-puppeteer
+
 import parse from "node-bookmarks-parser";
 const fs = require('fs');
 const getFile = require("async-get-file");
-const youtubedl = require('youtube-dl');
-const scrollPageToBottom = require('puppeteer-autoscroll-down')
+const YoutubeDlWrap = require("youtube-dl-wrap");
+const youtubeDlWrap = new YoutubeDlWrap();
+var supportedYoutubeDlSitesRegexes = [];
+const cliProgress = require('cli-progress');
 var errorUrls = []
 var ytCount = 0
 var ytUrls = []
+const bar1 = new cliProgress.SingleBar({
+  forceRedraw:true,
+  format: '{bar} | {percentage}% | ETA: {eta}s | {value}/{total} | {currentURL}'
+}, cliProgress.Presets.shades_classic);
 
+const BOOKMARK_FILE = 'bookmarks-ff3.html'
+const CONCURRENCY = 4  // set number of concurrent tasks
 
-function cleanTitle(title){
+function cleanTitle(title) {
+  // replace non-asci chars with `_`
   return title.replace(/[^a-z0-9_\-ąćęłńóśźż]/gi, '_');
 }
 
 function ensureDirectory(dir) {
+  // creates directory if it does not exist
   if (!fs.existsSync(dir)){
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -31,30 +43,22 @@ function directoryFromBookmarks(pathList) {
 }
 
 function flatBookmarks(bookmarks, flatList, root) {
+  // Flattens tree structure of bookmarks into list
   bookmarks.forEach(function (item, index) {
     if (item.type == 'bookmark') {
       flatList.push({'url': item.url, 'title': item.title, 'path': root})
     } else {
       var newRoot = root.concat(item.title)
-      // console.log(item.title, newRoot);
       flatList = flatBookmarks(item.children, flatList, newRoot)
     }
   });
   return flatList;
 }
 
-async function _savePageAsPdf(page, url, filePath, idx, total, title) {
-  // console.log(idx, total, url, filePath, title);
-  // const browser = await puppeteer.launch({headless: true});
-  // const page = await browser.newPage();
-
+async function _savePageAsPdf(page, url, fullFileName, idx, total) {
   await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1})
   await page.goto(url, {waitUntil: 'networkidle0'});
-
-  var arr = url.split("/");
-  var fileName = arr[2]
   await page.emulateMediaType('screen');
-
   await scrollPageToBottom(page);
 
   let height = await page.evaluate(() => document.documentElement.offsetHeight);
@@ -70,70 +74,78 @@ async function _savePageAsPdf(page, url, filePath, idx, total, title) {
   }
 
   await page.pdf({
-    path: `${filePath}/${title}.pdf`,
+    path: fullFileName,
     printBackground: true,
     margin: 'none',
     height: `${height+31}px`,
     width: `${width}px`
   });
-  // await browser.close();
   return url;
 }
 
 async function savePageAsPdf(page, url, filePath, idx, total, title) {
+  const fullFileName = `${filePath}/${title}.pdf`
   try {
-    return await _savePageAsPdf(page, url, filePath, idx, total, title)
+    if (fs.existsSync(fullFileName)) {
+      console.log(fullFileName + " already exists");
+      return
+    }
+    return await _savePageAsPdf(page, url, fullFileName, idx, total)
   } catch(err) {
-    // console.log(err)
-    errorUrls.push({url: url, error: err, message: err.message, name: err.name});
+    errorUrls.push({url: url, path: filePath, error: err, message: err.message, name: err.name});
     throw err;
-    // if (err.name == 'TimeoutError') {
-    //   console.log('\n\ntimeout for ' + url)
-    // } else {
-    //   console.log('\n\n' + url)
-    //   console.log(err)
-    //   throw err;
-    // }
   }
 }
 
+function updateProgressBar(url) {
+  bar1.increment();
+  bar1.update({currentURL:url})
+}
+
 async function downloadYoutube(url, dir, fileName) {
-  const video = youtubedl(url,
-    // Optional arguments passed to youtube-dl.
-    ['--format=18'],
-    // Additional options can be given for calling `child_process.execFile()`.
-    { cwd: __dirname })
+  try {
+    updateProgressBar(url)
+    await youtubeDlWrap.execPromise([url, "-f", "best", "-o", `${dir}/${fileName}.mp4`])
+  } catch (e) {
+    errorUrls.push({url: url, error: e.stderr});
+  }
+}
 
-  // Will be called when the download starts.
-  video.on('info', function(info) {
-    console.log('Download started ' + info._filename)
-  })
-
-  video.on('end', function() {
-    ytCount -= 1
-    console.log(ytCount + 'finished downloading')
-  })
-
-  video.on('error', function error(err) {
-    var urlRegex = /^http[s]?:\/\/.*?\/([a-zA-Z-_]+).*$/;
-    var url = 'unknown'
-    const urls = input.match(urlRegex);
-    if (urls.length > 0) {
-      url = urls[0];
+async function listOfSupportedYoutubeDlSites() {
+  var extractors = (await youtubeDlWrap.execPromise(["--list-extractors"])).split("\n")
+  var domains = []
+  for (var i = 0; i < extractors.length; i++) {
+    var el = extractors[i].split(":")[0]
+    if (el.includes("(") || el.includes(")") || el === ""){
+      continue;
     }
-    errorUrls.push({url: url, error: err});
-    console.log('error from ytdownloader:', err)
-  })
-
-  function wait() {
-    return new Promise(resolve => setTimeout(resolve, 5000));
+    domains.push(el.toLowerCase())
   }
+  return [...new Set(domains)]
+}
 
-  while (ytCount > 2) {
-    await wait()
+async function supportedSitesRegexes() {
+  const supportedYoutubeDlSites = (await listOfSupportedYoutubeDlSites()).concat(["youtu.be"])
+  const regexes = []
+  for (var i = 0; i < supportedYoutubeDlSites.length; i++) {
+    regexes.push(new RegExp("https?:\/\/(www\.)?" + supportedYoutubeDlSites[i] + "[^a-zA-Z0-9][\/\.]?", "g"))
   }
-  ytCount += 1
-  video.pipe(fs.createWriteStream(`${dir}/${fileName}.mp4`))
+  return regexes
+}
+
+async function downloadPdf(url, dir, title) {
+  const fullFileName = `${dir}/${title}.pdf`
+  if (fs.existsSync(fullFileName)) {
+    console.log(fullFileName + " already exists");
+    return
+  }
+  var options = {
+    directory: `${dir}/`,
+    filename: `${title}.pdf`
+  }
+  await getFile(url, options).catch(err => {
+    console.log(err);
+  });
 }
 
 async function initUblock() {
@@ -153,7 +165,7 @@ async function initUblock() {
 async function initCluster() {
   const cluster = await Cluster.launch({
     concurrency: Cluster.CONCURRENCY_BROWSER,
-    maxConcurrency: 8,
+    maxConcurrency: CONCURRENCY,
     monitor: true,
     puppeteerOptions: {
       pipe: true,
@@ -166,53 +178,51 @@ async function initCluster() {
   return cluster
 }
 
-async function downloadPdf(url, dir, title) {
-  // console.log(url)
-  // var newTitle = title.replace('\/','');
-  // console.log(newTitle)
-  var options = {
-    directory: `${dir}/`,
-    filename: `${title}.pdf`
-  }
-  await getFile(url, options).catch(err => {
-    console.log(err);
-  });
-}
-
-
-(async () => {
-  var html = fs.readFileSync('bookmarks.html', 'utf8');
-  const bookmarks = parse(html);
-  const res = flatBookmarks(bookmarks, [], [])
-  // const urls = res.slice(0,9999999999)
-  const urls = [{
-    url: 'https://sekurak.pl/kilka-slow-o-wdrozeniu-ssl-i-tls-cz-i/', title: 't3', path: ['a']
-  }]
-
-  const cluster = await initCluster()
-  const blocker = await initUblock()
-
+async function initClusterTask(cluster, blocker) {
   await cluster.task(async ({ page, data }) => {
     await blocker.enableBlockingInPage(page);
     const { url, dir, idx, total, title } = data;
-    var skipped = []
-    // skipped = [
-    //   'https://medium.com/tensorflow/introducing-tensorflow-hub-a-library-for-reusable-machine-learning-modules-in-tensorflow-cdee41fa18f9',
-    //   'https://www.privacytools.io/#pw',
-    // ]
-    // console.log(url)
-    if (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("youtube.pl")){
-      // ytUrls.push({url:url, dir:dir, title:title})
-    } else if (url.includes("file://") || skipped.includes(url)) {
-      // console.log('\nskip ' + url)
+
+    // for pages that contain video - download both: the page and the video
+    if (supportedYoutubeDlSitesRegexes.some(v => url.match(v))) {
+        if (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("youtube.pl")) {
+          // make sure not to download channels, playlists or whole user for youtube
+          if (!(url.includes("/channel") || url.includes("/playlist") || url.includes("/user"))) {
+            ytUrls.push({url:url, dir:dir, title:title})
+          }
+       } else if (url.includes("vimeo")) {
+         // video URLs contain only digits as identifier (users have also letters) - do not download users
+         if (url.match(/vimeo.com\/[^a-zA-Z][0-9]*/)) {
+           ytUrls.push({url:url, dir:dir, title:title})
+         }
+       } else {
+         ytUrls.push({url:url, dir:dir, title:title})
+       }
+    }
+
+    if (url.includes("file://")) {
+      // skip
     } else if (url.endsWith(".pdf")) {
-      // await downloadPdf(url, dir, title)
+      await downloadPdf(url, dir, title)
     } else {
       await savePageAsPdf(page, url, dir, idx, total, title);
     }
   });
+}
+
+(async () => {
+  supportedYoutubeDlSitesRegexes = await supportedSitesRegexes()
+  var html = fs.readFileSync(BOOKMARK_FILE, 'utf8');
+  const bookmarks = parse(html);
+  const urls = flatBookmarks(bookmarks, [], [])
+
+  const cluster = await initCluster()
+  const blocker = await initUblock()
+  await initClusterTask(cluster, blocker)
 
   const l = urls.length
+  console.log("found " + l + " bookmarks")
+  console.log("scrapping pages and preparing list of videos to download");
   for (const [idx, item] of urls.entries()) {
     var dir = directoryFromBookmarks(item.path)
     cluster.queue({
@@ -225,57 +235,17 @@ async function downloadPdf(url, dir, title) {
   }
 
   await cluster.idle();
-
-  // console.log(errorUrls);
-  let data = JSON.stringify(errorUrls);
-  fs.writeFileSync('errors.json', data);
   await cluster.close();
 
-  // for (const a of ytUrls) {
-  //   const { url, dir, title } = a;
-  //   await downloadYoutube(url, dir, title)
-  // }
-// });
+  const ytVideosNumber = ytUrls.length;
+  console.log("downloading " + ytVideosNumber + " videos");
+  bar1.start(ytVideosNumber, 0);
+  for (const a of ytUrls) {
+    const { url, dir, title } = a;
+    await downloadYoutube(url, dir, title)
+  }
+  bar1.stop();
+
+  let data = JSON.stringify(errorUrls);
+  fs.writeFileSync('errors.json', data);
 })();
-
-// function main() {
-//   const path = directoryFromBookmarks(['a'])
-//   const urls = [{
-//     url: 'https://www.youtube.com/watch?v=Qz8KsxGnznQ', title: 't3', path: path
-//   }]
-//   ytUrls.push({url:'https://www.youtube.com/watch?v=Qz8KsxGnznQ', dir:path, title:'t3'})
-//   for (const a of ytUrls) {
-//     console.log(a)
-//     const { url, dir, title } = a;
-//     await downloadYoutube(url, dir, title)
-//   }
-// }
-
-// main()
-
-// todo PDF - zapis
-// todo youtube downloader
-// todo sprawdzić PDFy czy się dobrze generują
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
