@@ -1,5 +1,7 @@
 // how to run it: `node -r esm main.js`
 
+var yt = require('./src/yt.js')
+
 import puppeteer from 'puppeteer';
 const { Cluster } = require('puppeteer-cluster');
 const scrollPageToBottom = require('puppeteer-autoscroll-down');
@@ -9,8 +11,6 @@ import fetch from 'cross-fetch'; // required 'fetch' for @cliqz/adblocker-puppet
 import parse from "node-bookmarks-parser";
 const fs = require('fs');
 const getFile = require("async-get-file");
-const YoutubeDlWrap = require("youtube-dl-wrap");
-const youtubeDlWrap = new YoutubeDlWrap();
 var supportedYoutubeDlSitesRegexes = [];
 const cliProgress = require('cli-progress');
 var errorUrls = []
@@ -100,49 +100,9 @@ async function savePageAsPdf(page, url, filePath, idx, total, title) {
   }
 }
 
-function updateProgressBar(url) {
-  bar1.increment();
-  bar1.update({currentURL:url})
-}
-
-async function downloadYoutube(url, dir, fileName) {
-  try {
-    updateProgressBar(url)
-    await youtubeDlWrap.execPromise([url,
-      "-f", "best",
-      "-o", `${dir}/${fileName}.mp4`,
-      "--download-archive", "downloaded-videos-archive.txt"])
-  } catch (e) {
-    errorUrls.push({url: url, error: e.stderr});
-  }
-}
-
-async function listOfSupportedYoutubeDlSites() {
-  var extractors = (await youtubeDlWrap.execPromise(["--list-extractors"])).split("\n")
-  var domains = []
-  for (var i = 0; i < extractors.length; i++) {
-    var el = extractors[i].split(":")[0]
-    if (el.includes("(") || el.includes(")") || el === ""){
-      continue;
-    }
-    domains.push(el.toLowerCase())
-  }
-  return [...new Set(domains)]
-}
-
-async function supportedSitesRegexes() {
-  const supportedYoutubeDlSites = (await listOfSupportedYoutubeDlSites()).concat(["youtu.be"])
-  const regexes = []
-  for (var i = 0; i < supportedYoutubeDlSites.length; i++) {
-    regexes.push(new RegExp("https?:\/\/(www\.)?" + supportedYoutubeDlSites[i] + "[^a-zA-Z0-9][\/\.]?", "g"))
-  }
-  return regexes
-}
-
 async function downloadPdf(url, dir, title) {
   const fullFileName = pdfFileName(dir, title)
   if (fs.existsSync(fullFileName)) {
-    console.log(fullFileName + " already exists");
     return
   }
   var options = {
@@ -150,7 +110,7 @@ async function downloadPdf(url, dir, title) {
     filename: `${title}.pdf`
   }
   await getFile(url, options).catch(err => {
-    console.log(err);
+    errorUrls.push({url: url, path: fullFileName, error: err});
   });
 }
 
@@ -189,21 +149,8 @@ async function initClusterTask(cluster, blocker) {
     await blocker.enableBlockingInPage(page);
     const { url, dir, idx, total, title } = data;
 
-    // for pages that contain video - download both: the page and the video
-    if (supportedYoutubeDlSitesRegexes.some(v => url.match(v))) {
-        if (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("youtube.pl")) {
-          // make sure not to download channels, playlists or whole user for youtube
-          if (!(url.includes("/channel") || url.includes("/playlist") || url.includes("/user"))) {
-            ytUrls.push({url:url, dir:dir, title:title})
-          }
-       } else if (url.includes("vimeo")) {
-         // video URLs contain only digits as identifier (users have also letters) - do not download users
-         if (url.match(/vimeo.com\/[^a-zA-Z][0-9]*/)) {
-           ytUrls.push({url:url, dir:dir, title:title})
-         }
-       } else {
-         ytUrls.push({url:url, dir:dir, title:title})
-       }
+    if (yt.isUrlSupported(url)) {
+      ytUrls.push({url:url, dir:dir, title:title})
     }
 
     if (url.includes("file://")) {
@@ -217,7 +164,7 @@ async function initClusterTask(cluster, blocker) {
 }
 
 (async () => {
-  supportedYoutubeDlSitesRegexes = await supportedSitesRegexes()
+  yt.initYoutubeDl()
   var html = fs.readFileSync(BOOKMARK_FILE, 'utf8');
   const bookmarks = parse(html);
   const urls = flatBookmarks(bookmarks, [], [])
@@ -248,7 +195,11 @@ async function initClusterTask(cluster, blocker) {
   bar1.start(ytVideosNumber, 0);
   for (const a of ytUrls) {
     const { url, dir, title } = a;
-    await downloadYoutube(url, dir, title)
+    try {
+      await yt.downloadYoutube(url, dir, title, bar1)
+    } catch (e) {
+      errorUrls.push({url: url, error: e.stderr});
+    }
   }
   bar1.stop();
 
