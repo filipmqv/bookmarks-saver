@@ -153,7 +153,7 @@ async function initClusterTask(cluster, blocker) {
     await blocker.enableBlockingInPage(page);
     const { url, dir, idx, total, title } = data;
 
-    if (yt.isUrlSupported(url)) {
+    if (await yt.isUrlSupported(url)) {
       ytUrls.push({url:url, dir:dir, title:title})
     }
 
@@ -168,7 +168,7 @@ async function initClusterTask(cluster, blocker) {
 }
 
 (async () => {
-  yt.initYoutubeDl()
+  await yt.initYoutubeDl()
   var html = fs.readFileSync(BOOKMARK_FILE, 'utf8');
   const bookmarks = parse(html);
   const urls = flatBookmarks(bookmarks, [], [])
