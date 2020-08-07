@@ -1,12 +1,9 @@
-// how to run it: `node -r esm main.js`
-
 var yt = require('./src/yt.js')
 
 import puppeteer from 'puppeteer';
 const { Cluster } = require('puppeteer-cluster');
 const scrollPageToBottom = require('puppeteer-autoscroll-down');
 import { PuppeteerBlocker } from '@cliqz/adblocker-puppeteer';
-// todo sprawdzić inne rozszerzenia, może po prostu block ściągnięty do folderu?
 import fetch from 'cross-fetch'; // required 'fetch' for @cliqz/adblocker-puppeteer
 
 import parse from "node-bookmarks-parser";
@@ -23,7 +20,7 @@ const bar1 = new cliProgress.SingleBar({
 }, cliProgress.Presets.shades_classic);
 
 const BOOKMARK_FILE = 'bookmarks.html'
-const CONCURRENCY = 1  // set number of concurrent tasks
+const CONCURRENCY = 4  // set number of concurrent tasks
 
 function cleanTitle(title) {
   // replace non-asci chars with `_`
@@ -71,15 +68,6 @@ async function _savePageAsPdf(page, url, fullFileName, idx, total) {
     let height = await page.evaluate(() => document.documentElement.offsetHeight);
     let width = await page.evaluate(() => document.documentElement.offsetWidth);
 
-    // try {
-    //   await page.addStyleTag({
-    //     content: `@page { size:${width}px ${height+30}px;}`
-    //   })
-    // } catch(err) {
-    //   console.log('\n\nproblem with addStyleTag ' + url)
-    //   // throw err;
-    // }
-
     await page.pdf({
       path: fullFileName,
       printBackground: true,
@@ -120,7 +108,7 @@ async function downloadPdf(url, dir, title) {
 
 async function initUblock() {
   let blocker = await PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch)
-  blocker = PuppeteerBlocker.parse(fs.readFileSync('ublock-statyczne-filtry_2020-08-02_22.58.04.txt', 'utf-8'));
+  // todo custom file blocker = PuppeteerBlocker.parse(fs.readFileSync('ublock-statyczne-filtry_2020-08-02_22.58.04.txt', 'utf-8'));
   blocker = await PuppeteerBlocker.fromLists(fetch, [
     'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/polish-adblock-filters/adblock_ublock.txt',
     'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/adblock_social_filters/adblock_social_list.txt',
@@ -183,11 +171,11 @@ async function initClusterTask(cluster, blocker) {
   yt.initYoutubeDl()
   var html = fs.readFileSync(BOOKMARK_FILE, 'utf8');
   const bookmarks = parse(html);
-  // const urls = flatBookmarks(bookmarks, [], [])
-  const urls = [
-    {url: "https://www.youtube.com/watch?v=j8PDTJNaPc0", title: "ytyt", path: ["a"]},
-    // {url: "https://www.filmweb.pl/film/Ksi%C4%99%C5%BCniczka+Mononoke-1997-971", title: "Mononoke", path: ["a"]},
-  ]
+  const urls = flatBookmarks(bookmarks, [], [])
+  // todo you can debug this script with custom urls; provide them in following way:
+  // const urls = [
+  //   {url: "https://www.youtube.com/watch?v=j8PDTJNaPc0", title: "yt", path: ["a"]},
+  // ]
 
   const cluster = await initCluster()
   const blocker = await initUblock()

@@ -28,3 +28,6 @@ or
 ```
 node -r esm main.js
 ```
+
+### Customize
+You can change number of pages that are downloaded concurrently - change `CONCURRENCY` const in `main.js` file.
