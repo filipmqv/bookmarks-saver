@@ -18,9 +18,13 @@ make sure that `nodejs -v` is at least `v12.18.2`
 Also install `youtube-dl` library - http://ytdl-org.github.io/youtube-dl/download.html
 
 ### Run
-Place file with bookmarks in root directory of this app. Name should be `bookmarks.html`
+First, export bookmarks from your browser to HTML file. Put file with bookmarks in root directory of this app. Name of the file should be `bookmarks.html`
 
 To run the script:
+```
+node index.js
+```
+or
 ```
 node -r esm main.js
 ```

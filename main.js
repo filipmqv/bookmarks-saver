@@ -6,6 +6,7 @@ import puppeteer from 'puppeteer';
 const { Cluster } = require('puppeteer-cluster');
 const scrollPageToBottom = require('puppeteer-autoscroll-down');
 import { PuppeteerBlocker } from '@cliqz/adblocker-puppeteer';
+// todo sprawdzić inne rozszerzenia, może po prostu block ściągnięty do folderu?
 import fetch from 'cross-fetch'; // required 'fetch' for @cliqz/adblocker-puppeteer
 
 import parse from "node-bookmarks-parser";
@@ -21,8 +22,8 @@ const bar1 = new cliProgress.SingleBar({
   format: '{bar} | {percentage}% | ETA: {eta}s | {value}/{total} | {currentURL}'
 }, cliProgress.Presets.shades_classic);
 
-const BOOKMARK_FILE = 'bookmarks-ff3.html'
-const CONCURRENCY = 4  // set number of concurrent tasks
+const BOOKMARK_FILE = 'bookmarks.html'
+const CONCURRENCY = 1  // set number of concurrent tasks
 
 function cleanTitle(title) {
   // replace non-asci chars with `_`
@@ -61,29 +62,32 @@ function pdfFileName(filePath, fileName) {
 
 async function _savePageAsPdf(page, url, fullFileName, idx, total) {
   await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1})
-  await page.goto(url, {waitUntil: 'networkidle0'});
-  await page.emulateMediaType('screen');
-  await scrollPageToBottom(page);
+  const response = await page.goto(url, {timeout: 25000, waitUntil: 'networkidle2'});
+  if (response._status < 400) {
+    await page.waitFor(3000);
+    await page.emulateMediaType('screen');
+    await scrollPageToBottom(page);
 
-  let height = await page.evaluate(() => document.documentElement.offsetHeight);
-  let width = await page.evaluate(() => document.documentElement.offsetWidth);
+    let height = await page.evaluate(() => document.documentElement.offsetHeight);
+    let width = await page.evaluate(() => document.documentElement.offsetWidth);
 
-  try {
-    await page.addStyleTag({
-      content: `@page { size:${width}px ${height+30}px;}`
-    })
-  } catch(err) {
-    console.log('\n\nproblem with addStyleTag ' + url)
-    throw err;
+    // try {
+    //   await page.addStyleTag({
+    //     content: `@page { size:${width}px ${height+30}px;}`
+    //   })
+    // } catch(err) {
+    //   console.log('\n\nproblem with addStyleTag ' + url)
+    //   // throw err;
+    // }
+
+    await page.pdf({
+      path: fullFileName,
+      printBackground: true,
+      margin: 'none',
+      height: `${height+31}px`,
+      width: `${width}px`
+    });
   }
-
-  await page.pdf({
-    path: fullFileName,
-    printBackground: true,
-    margin: 'none',
-    height: `${height+31}px`,
-    width: `${width}px`
-  });
   return url;
 }
 
@@ -115,15 +119,22 @@ async function downloadPdf(url, dir, title) {
 }
 
 async function initUblock() {
-  let blocker = PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch).
+  let blocker = await PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch)
+  blocker = PuppeteerBlocker.parse(fs.readFileSync('ublock-statyczne-filtry_2020-08-02_22.58.04.txt', 'utf-8'));
   blocker = await PuppeteerBlocker.fromLists(fetch, [
+    'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/polish-adblock-filters/adblock_ublock.txt',
+    'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/adblock_social_filters/adblock_social_list.txt',
     'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/cookies_filters/adblock_cookies.txt',
+    'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/cookies_filters/cookies_uB_AG.txt',
     'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/polish-adblock-filters/adblock.txt',
     'https://raw.githubusercontent.com/olegwukr/polish-privacy-filters/master/anti-adblock.txt',
+    'https://raw.githubusercontent.com/olegwukr/polish-privacy-filters/master/anti-adblock-suplement.txt',
     'https://raw.githubusercontent.com/olegwukr/polish-privacy-filters/master/adblock.txt',
-    'https://raw.githubusercontent.com/MajkiIT/polish-ads-filter/master/cookies_filters/adblock_cookies.txt',
     'https://raw.githubusercontent.com/PolishFiltersTeam/PolishAnnoyanceFilters/master/PPB.txt',
-    'https://www.fanboy.co.nz/fanboy-cookiemonster.txt'
+    'https://raw.githubusercontent.com/PolishFiltersTeam/PolishAnnoyanceFilters/master/PAF_supp.txt',
+    'https://raw.githubusercontent.com/PolishFiltersTeam/PolishAntiAnnoyingSpecialSupplement/master/polish_rss_filters.txt',
+    'https://www.fanboy.co.nz/fanboy-cookiemonster.txt',
+    'https://www.i-dont-care-about-cookies.eu/abp/',
   ]);
   return blocker
 }
@@ -134,10 +145,15 @@ async function initCluster() {
     maxConcurrency: CONCURRENCY,
     monitor: true,
     puppeteerOptions: {
+      // headless: false,
       pipe: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920x1080',
       ]
     },
   });
@@ -167,7 +183,11 @@ async function initClusterTask(cluster, blocker) {
   yt.initYoutubeDl()
   var html = fs.readFileSync(BOOKMARK_FILE, 'utf8');
   const bookmarks = parse(html);
-  const urls = flatBookmarks(bookmarks, [], [])
+  // const urls = flatBookmarks(bookmarks, [], [])
+  const urls = [
+    {url: "https://www.youtube.com/watch?v=j8PDTJNaPc0", title: "ytyt", path: ["a"]},
+    // {url: "https://www.filmweb.pl/film/Ksi%C4%99%C5%BCniczka+Mononoke-1997-971", title: "Mononoke", path: ["a"]},
+  ]
 
   const cluster = await initCluster()
   const blocker = await initUblock()
