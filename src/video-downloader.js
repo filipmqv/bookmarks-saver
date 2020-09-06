@@ -2,12 +2,27 @@ const YoutubeDlWrap = require("youtube-dl-wrap");
 const youtubeDlWrap = new YoutubeDlWrap();
 var supportedYoutubeDlSitesRegexes = [];
 
+const cliProgress = require('cli-progress');
+const progressBar = new cliProgress.SingleBar({
+  forceRedraw:true,
+  format: '{bar} | {percentage}% | ETA: {eta}s | {value}/{total} | {currentURL}'
+}, cliProgress.Presets.shades_classic);
+
 async function verifyYoutubeDlIsInstalled() {
   try {
     const v = await youtubeDlWrap.execPromise(["--version"])
   } catch (e) {
     throw "YoutubeDl is not installed or there is some problem with it"
   }
+}
+
+async function isUrlYoutube(url) {
+  return (url.includes("youtube.com") || url.includes("youtu.be"))
+}
+
+async function isUrlYoutubeVideo(url) {
+  // checks if URL is youtube video page (not channel, playlist or whole user page)
+  return await isUrlYoutube(url) && url.includes("/watch") && (!(url.includes("/channel") || url.includes("/playlist") || url.includes("/user")))
 }
 
 async function listOfSupportedYoutubeDlSites() {
@@ -35,9 +50,8 @@ async function supportedSitesRegexes() {
 async function isUrlSupported(url) {
   // for pages that contain video - download both: the page and the video
   if (supportedYoutubeDlSitesRegexes.some(v => url.match(v))) {
-      if (url.includes("youtube.com") || url.includes("youtu.be") || url.includes("youtube.pl")) {
-        // make sure not to download channels, playlists or whole user for youtube
-        if (!(url.includes("/channel") || url.includes("/playlist") || url.includes("/user"))) {
+      if (await isUrlYoutube(url)) {
+        if (await isUrlYoutubeVideo(url)) {
           return true
         }
      } else if (url.includes("vimeo")) {
@@ -52,17 +66,13 @@ async function isUrlSupported(url) {
   return false
 }
 
-function updateProgressBar(bar, url) {
-  bar.increment();
-  bar.update({currentURL:url})
-}
-
-async function downloadYoutube(url, dir, fileName, bar) {
-  updateProgressBar(bar, url)
+async function downloadVideo(url, dir, fileName, progressBar) {
+  progressBar.update({currentURL:url})
   await youtubeDlWrap.execPromise([url,
     "-f", "best",
     "-o", `${dir}/${fileName}.mp4`,
-    "--download-archive", "downloaded-videos-archive.txt"])
+    "--download-archive", "config/downloaded-videos-archive.txt"])
+  progressBar.increment();
 }
 
 async function initYoutubeDl() {
@@ -70,4 +80,20 @@ async function initYoutubeDl() {
   supportedYoutubeDlSitesRegexes = await supportedSitesRegexes()
 }
 
-module.exports = {initYoutubeDl, isUrlSupported, downloadYoutube}
+async function downloadVideoList(pages, errorUrls) {
+  const videosNumber = pages.length;
+  console.log("downloading " + videosNumber + " videos");
+  progressBar.start(videosNumber, 0);
+  for (const page of pages) {
+    const { url, dir, title } = page;
+    try {
+      await downloadVideo(url, dir, title, progressBar)
+    } catch (e) {
+      errorUrls.push({url: url, error: e.stderr});
+    }
+  }
+  progressBar.stop();
+  return errorUrls
+}
+
+module.exports = {initYoutubeDl, isUrlSupported, downloadVideo, isUrlYoutubeVideo, downloadVideoList}

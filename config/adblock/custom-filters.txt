@@ -1,0 +1,10 @@
+! 24.05.2020 https://esa.nask.pl
+esa.nask.pl##.ReactModal__Overlay--after-open.ReactModal__Overlay
+
+! 2.08.2020 https://www.filmweb.pl
+www.filmweb.pl##.IRI.rodo__overlay.boardsWrapper
+##.rodoBoard
+
+###ticker > .ytd-masthead.style-scope
+
+youtube.com##ytd-popup-container > paper-dialog.ytd-popup-container[role="dialog"]:has(a[href^="https://support.google.com/youtube/?p=sign_in"])
