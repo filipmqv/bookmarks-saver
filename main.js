@@ -144,12 +144,12 @@ async function initClusterTask(cluster, blocker, errorUrlsToSkip) {
   await videoDownloader.initYoutubeDl()
   var html = fs.readFileSync(BOOKMARK_FILE, 'utf8');
   const bookmarks = parse(html);
-  // const urls = bookmarkUtils.flatBookmarks(bookmarks, [], [])
+  const urls = bookmarkUtils.flatBookmarks(bookmarks, [], [])
   // todo you can debug this script with custom urls; provide them in following way:
-  const urls = [
-    {url: "https://www.youtube.com/watch?v=OHT-UPqprbs", title: "yt", path: ["a"]},
-    {url: 'http://poznan.carpediem.cd/', title: "34gffsdf", path: ["a"]},
-  ]
+  // const urls = [
+  //   {url: "https://www.youtube.com/watch?v=OHT-UPqprbs", title: "yt", path: ["a"]},
+  //   {url: 'http://poznan.carpediem.cd/', title: "34gffsdf", path: ["a"]},
+  // ]
 
   const cluster = await initCluster()
   const blocker = await initUblock()
