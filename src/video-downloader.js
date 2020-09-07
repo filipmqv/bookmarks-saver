@@ -66,15 +66,13 @@ async function isUrlSupported(url) {
     return false
 }
 
-async function downloadVideo(url, dir, fileName, progressBar) {
-    progressBar.update({ currentURL: url })
+async function downloadVideo(url, dir, fileName) {
     const filepath = dir ? `${dir}/${fileName}.mp4` : `${fileName}.mp4`
     await youtubeDlWrap.execPromise([url,
         "-f", "best",
         "-o", filepath,
         "--download-archive", "config/downloaded-videos-archive.txt"]),
         "--no-playlist"
-    progressBar.increment();
 }
 
 async function initYoutubeDl() {
@@ -100,10 +98,12 @@ async function downloadVideoList(pages, videoUrlsToSkip) {
     for (const page of videoUrls) {
         const { url, dir, title } = page;
         try {
-            await downloadVideo(url, dir, title, progressBar)
+            progressBar.update({ currentURL: url })
+            await downloadVideo(url, dir, title)
         } catch (e) {
             errorUrls.push({ url: url, error: e.stderr });
         }
+        progressBar.increment();
     }
     progressBar.stop();
     return errorUrls
