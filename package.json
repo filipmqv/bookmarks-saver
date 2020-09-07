@@ -1,9 +1,13 @@
 {
-  "name": "page-saver-2",
+  "name": "bookmarks-saver",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "module": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/filipmqv/bookmarks-saver.git"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,6 +19,8 @@
     "async-get-file": "^1.0.2",
     "cli-progress": "^3.8.2",
     "command-line-args": "^5.1.1",
+    "command-line-usage": "^6.1.0",
+    "config": "^3.3.1",
     "cross-fetch": "^3.0.4",
     "esm": "^3.2.25",
     "node-bookmarks-parser": "^2.0.0",
