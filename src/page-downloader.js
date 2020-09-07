@@ -8,7 +8,6 @@ import fetch from 'cross-fetch'; // 'fetch' required for @cliqz/adblocker-puppet
 const getFile = require("async-get-file");
 const fs = require('fs');
 
-const CONCURRENCY = 4  // set number of concurrent tasks
 var errorUrls = []
 
 function pdfFileName(filePath, fileName) {
@@ -89,12 +88,12 @@ async function initUblock() {
     return blocker
 }
 
-async function initCluster() {
+async function initCluster(concurrency) {
     const cluster = await Cluster.launch({
         concurrency: Cluster.CONCURRENCY_BROWSER,
-        maxConcurrency: CONCURRENCY,
+        maxConcurrency: concurrency,
         timeout: 60000,
-        monitor: true,
+        monitor: true, // provides info about downloading progress
         puppeteerOptions: {
             // headless: false, // with false, you can see the page content, but cannot save PDF...
             pipe: true,
@@ -113,7 +112,9 @@ async function initCluster() {
 
 async function initClusterTask(cluster, blocker, errorUrlsToSkip) {
     await cluster.task(async ({ page, data }) => {
-        await blocker.enableBlockingInPage(page);
+        if (blocker) {
+            await blocker.enableBlockingInPage(page);
+        }
         const { url, dir, title } = data;
 
         if (url.includes("file://")) {
@@ -128,12 +129,11 @@ async function initClusterTask(cluster, blocker, errorUrlsToSkip) {
     });
 }
 
-async function downloadPages(pages, errorUrlsToSkip) {
-    const cluster = await initCluster()
-    const blocker = await initUblock()
+async function downloadPages(pages, errorUrlsToSkip, concurrency, useAdblock) {
+    const cluster = await initCluster(concurrency)
+    const blocker = useAdblock ? await initUblock() : undefined
     await initClusterTask(cluster, blocker, errorUrlsToSkip)
 
-    console.log(`found bookmarks: ${pages.length}`)
     for (const page of pages) {
         var dir = bookmarkUtils.directoryFromBookmarks(page.path)
         cluster.queue({
@@ -148,4 +148,4 @@ async function downloadPages(pages, errorUrlsToSkip) {
     return errorUrls;
 }
 
-module.exports = {downloadPages}
+module.exports = { downloadPages }

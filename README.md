@@ -2,9 +2,9 @@
 
 ## Description
 
-This script downloads all bookmarked pages as PDFs and downloads videos from pages that are supported by `youtube-dl` tool (eg. Youtube, Vimeo, Facebook etc.) - to check full list of supported pages run `youtube-dl --list-extractors`.
+This script downloads all bookmarked pages as PDFs and downloads videos from pages that are supported by `youtube-dl` tool (eg. Youtube, Vimeo, Facebook etc.) - to check full list of supported pages run `youtube-dl --list-extractors`. All content will be saved in directory `dist`.
 
-Any page or video that failed to be downloaded, will be listed in `errors-{timestamp}.json` file in `errors` directory after the script finishes. Newest file is also a list to skip those urls in future script executions.
+Any page or video that failed to be downloaded, will be listed in `errors-{timestamp}.json` file in `errors/page` or `errors/video` directories after the script finishes. Newest file is also used as a list to skip urls in future script executions.
 
 ## Install
 
@@ -23,22 +23,27 @@ Also install `youtube-dl` library - http://ytdl-org.github.io/youtube-dl/downloa
 
 ## Run
 
-First, export bookmarks from your browser to HTML file. Put file with bookmarks in root directory of this app. Name of the file should be `bookmarks.html`
+First, export bookmarks from your browser to HTML file. Put file with bookmarks in root directory of this app. Name of the file by default should be `bookmarks.html` (can be customized).
 
 To run the script:
 ```
 node index.js
 ```
-or
-```
-node -r esm main.js
-```
 
 ## Customize
 
+You can customize the script using `config/default.json` file (permanent changes or defaults) or use commandline args per script execution. For available options run:
+```
+node index.js --help
+``` 
+
+### Bookmarks file
+
+You can change bookmarks file name.
+
 ### Page downloader
 
-You can change number of pages that are downloaded concurrently - change `CONCURRENCY` const in `main.js` file.
+You can change number of pages that are downloaded concurrently - check `concurrency` option. For best performance set it to number of CPU cores.
 
 ### Video downloader
 

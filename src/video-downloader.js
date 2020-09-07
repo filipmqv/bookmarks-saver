@@ -5,7 +5,7 @@ var supportedYoutubeDlSitesRegexes = [];
 const cliProgress = require('cli-progress');
 const progressBar = new cliProgress.SingleBar({
     forceRedraw: true,
-    format: '{bar} {percentage}% | {value}/{total} | ETA: {eta_formatted} | {currentURL}'
+    format: '{percentage}% | {value}/{total} | ETA: {eta_formatted} | {currentURL}'
 }, cliProgress.Presets.shades_classic);
 
 async function verifyYoutubeDlIsInstalled() {
