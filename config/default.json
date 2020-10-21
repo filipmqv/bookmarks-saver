@@ -2,5 +2,6 @@
     "bookmarks": {
         "fileName": "bookmarks.html"
     },
-    "concurrency": 4
+    "concurrency": 4,
+    "taskTimeout": 90000
 }
