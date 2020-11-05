@@ -1,4 +1,3 @@
-const bookmarkUtils = require('./bookmark-utils.js')
 const videoDownloader = require('./video-downloader.js')
 const config = require('config');
 
@@ -40,7 +39,7 @@ async function _savePageAsPdf(page, url, fullFileName) {
     await scrollPageToBottom(page);
     // console.log(new Date().toString(), "scrolled");
 
-    if (await videoDownloader.isUrlYoutubeVideo(url)) {
+    if (videoDownloader.isUrlYoutubeVideo(url)) {
       page = await _handleYoutubePage(page)
     }
 
@@ -154,8 +153,8 @@ async function downloadPages(pages, errorUrlsToSkip, useAdblock) {
   for (const page of pages) {
     const data = {
       url: page.url,
-      dir: bookmarkUtils.directoryFromBookmarks(page.path),
-      title: bookmarkUtils.cleanTitle(page.title),
+      dir: page.path,
+      title: page.title,
       originalUrl: page.originalUrl
     }
     cluster.queue(data);
@@ -166,4 +165,4 @@ async function downloadPages(pages, errorUrlsToSkip, useAdblock) {
   return errorUrls;
 }
 
-module.exports = { downloadPages }
+module.exports = { downloadPages, pdfFileName }

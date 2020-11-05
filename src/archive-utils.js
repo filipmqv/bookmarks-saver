@@ -10,7 +10,7 @@ const progressBar = new cliProgress.SingleBar({
 
 async function checkArchive(urlToCheck) {
   // check if archive.org contains snapshot of page with given url
-  // returns 
+  // returns url to retrieve that page from archive.org
   try {
     const response = await axios.get(`${BASE_URL}${urlToCheck}`)
     if (response && response.data && response.data.archived_snapshots && response.data.archived_snapshots.closest && response.data.archived_snapshots.closest.url) {

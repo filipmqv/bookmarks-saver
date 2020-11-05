@@ -4,12 +4,32 @@ const bookmarkUtils = require('./src/bookmark-utils.js');
 const fileUtils = require('./src/file-utils.js');
 const archiveUtils = require('./src/archive-utils.js');
 const configUtils = require('./src/config-utils.js');
+const tidyPagesUtils = require('./src/tidy-pages-utils.js');
 
 async function runPages(pages, options) {
   const useAdblock = !options.noadblock;
   const pageUrlsToSkip = fileUtils.readFile("page")
   const pageUrlErrors = await pageDownloader.downloadPages(pages, pageUrlsToSkip, useAdblock)
   fileUtils.saveFile("page", fileUtils.joinErrorUrls(pageUrlErrors, pageUrlsToSkip))
+}
+
+function manualUrl(options) {
+  return [{ url: options.url, title: options.name || "my Page", path: [""] }]
+}
+
+function pagesFromBookmarks(options) {
+  var pages = []
+  try {
+    pages = bookmarkUtils.getPages(options.bookmarksFileName)
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      throw `Cannot find file ${options.bookmarksFileName}`
+    } else {
+      throw error;
+    }
+  }
+  console.log(`found bookmarks: ${pages.length}`)
+  return pages
 }
 
 (async () => {
@@ -23,23 +43,21 @@ async function runPages(pages, options) {
     await videoDownloader.initYoutubeDl()
   }
 
-  var pages = []
-  if (options.url) {
-    pages = [{ url: options.url, title: options.name || "my Page", path: [""] }]
-  } else {
-    try {
-      pages = bookmarkUtils.getPages(options.bookmarksFileName)
-    } catch {
-      console.error(`Cannot find file ${options.bookmarksFileName}`);
-      return 
-    }
+  var pagesVar
+  try {
+    pagesVar = options.url ? manualUrl(options) : pagesFromBookmarks(options)
+  } catch (error) {
+    console.log(error)
+    return
+  }
+  const pages = pagesVar
 
-    console.log(`found bookmarks: ${pages.length}`)
-    // todo you can debug this script with custom urls; provide them in following way:
-    // pages = [{url: "https://www.youtube.com/watch?v=OHT-UPqprbs", title: "yt", path: ["a", "b"]}]
+  if (options.runTidyPages) {
+    await tidyPagesUtils.runTidyPages(pages, options.bookmarksFileName)
   }
 
   if (options.runPages) {
+    console.log(`\ndownloading pages`);
     await runPages(pages, options)
   }
 

@@ -11,15 +11,20 @@ const optionDefinitions = [
   { name: 'name', alias: 'n', type: String, description: 'Provide filename for single URL to download' },
   // following are script parts. If you add another separate script part, add it to `scriptParts` array below.
   { name: 'pages', alias: 'p', type: Boolean, description: 'Only download pages.' },
+  { name: 'tidy', alias: 't', type: Boolean, description: 'Only tidy pages directory.' },
   { name: 'archive', alias: 'a', type: Boolean, description: 'Only download pages from webarchive.' },
   { name: 'videos', alias: 'v', type: Boolean, description: 'Only download videos.' },
 ];
 const options = commandLineArgs(optionDefinitions);
-const scriptParts = [options.pages, options.archive, options.videos];
+
+// handle script parts
+const scriptParts = [options.pages, options.tidy, options.archive, options.videos];
 options.allScript = scriptParts.every(Boolean) || !scriptParts.some(Boolean)
 options.runPages = options.pages || options.allScript
+options.runTidyPages = options.tidy || options.allScript
 options.runVideos = options.videos || options.allScript
 options.runArchive = options.archive || options.allScript
+
 options.bookmarksFileName = options.bookmarks || config.get('bookmarks.fileName');
 
 const sections = [

@@ -1,5 +1,6 @@
 const YoutubeDlWrap = require("youtube-dl-wrap");
 const youtubeDlWrap = new YoutubeDlWrap();
+const fs = require('fs');
 var supportedYoutubeDlSitesRegexes = [];
 
 const cliProgress = require('cli-progress');
@@ -10,19 +11,32 @@ const progressBar = new cliProgress.SingleBar({
 
 async function verifyYoutubeDlIsInstalled() {
   try {
-    const v = await youtubeDlWrap.execPromise(["--version"])
+    await youtubeDlWrap.execPromise(["--version"])
   } catch (e) {
     throw "YoutubeDl is not installed or there is some problem with it"
   }
 }
 
-async function isUrlYoutube(url) {
+function videoFileName(dir, fileName) {
+  return dir ? `${dir}/${fileName}.mp4` : `${fileName}.mp4`
+}
+
+function isUrlYoutube(url) {
   return (url.includes("youtube.com") || url.includes("youtu.be"))
 }
 
-async function isUrlYoutubeVideo(url) {
+function isUrlYoutubeVideo(url) {
   // checks if URL is youtube video page (not channel, playlist or whole user page)
-  return await isUrlYoutube(url) && url.includes("/watch") && (!(url.includes("/channel") || url.includes("/playlist") || url.includes("/user")))
+  return isUrlYoutube(url) && url.includes("/watch") && (!(url.includes("/channel") || url.includes("/playlist") || url.includes("/user")))
+}
+
+function isUrlVimeo(url) {
+  return url.includes("vimeo")
+}
+
+function isUrlVimeoVideo(url) {
+  // checks if URL is video. Such URLs contain only digits as identifier - opposed to users who also have letters
+  return isUrlVimeo(url) && url.match(/vimeo.com\/[^a-zA-Z][0-9]*/)
 }
 
 async function listOfSupportedYoutubeDlSites() {
@@ -48,15 +62,14 @@ async function supportedSitesRegexes() {
 }
 
 async function isUrlSupported(url) {
-  // for pages that contain video - download both: the page and the video
+  // check if given URL is supported (if video can be downloaded)
   if (supportedYoutubeDlSitesRegexes.some(v => url.match(v))) {
-    if (await isUrlYoutube(url)) {
-      if (await isUrlYoutubeVideo(url)) {
+    if (isUrlYoutube(url)) {
+      if (isUrlYoutubeVideo(url)) {
         return true
       }
-    } else if (url.includes("vimeo")) {
-      // video URLs contain only digits as identifier (users have also letters) - do not download users
-      if (url.match(/vimeo.com\/[^a-zA-Z][0-9]*/)) {
+    } else if (isUrlVimeo(url)) {
+      if (isUrlVimeoVideo(url)) {
         return true
       }
     } else {
@@ -67,11 +80,15 @@ async function isUrlSupported(url) {
 }
 
 async function downloadVideo(url, dir, fileName) {
-  const filepath = dir ? `${dir}/${fileName}.mp4` : `${fileName}.mp4`
+  const filepath = videoFileName(dir, fileName)
+  if (fs.existsSync(filepath)) {
+    return
+  }
   await youtubeDlWrap.execPromise([url,
     "-f", "best",
     "-o", filepath,
-    "--download-archive", "config/downloaded-videos-archive.txt"]),
+    // todo uncomment "--download-archive", "config/downloaded-videos-archive.txt"
+  ]),
     "--no-playlist"
 }
 
@@ -96,10 +113,10 @@ async function downloadVideoList(pages, videoUrlsToSkip) {
   console.log("downloading " + videosNumber + " videos");
   progressBar.start(videosNumber, 0);
   for (const page of videoUrls) {
-    const { url, dir, title } = page;
+    const { url, path, title } = page;
     try {
       progressBar.update({ currentURL: url })
-      await downloadVideo(url, dir, title)
+      await downloadVideo(url, path, title)
     } catch (e) {
       errorUrls.push({ timestamp: new Date().toISOString(), url: url, error: e.stderr });
     }
@@ -109,4 +126,4 @@ async function downloadVideoList(pages, videoUrlsToSkip) {
   return errorUrls
 }
 
-module.exports = { initYoutubeDl, isUrlYoutubeVideo, downloadVideoList }
+module.exports = { initYoutubeDl, isUrlYoutubeVideo, downloadVideoList, videoFileName }

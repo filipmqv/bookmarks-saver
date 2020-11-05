@@ -12,7 +12,7 @@ Install npm and nodejs first (example command for Ubuntu):
 ```
 sudo apt install nodejs npm
 ```
-Make sure that `nodejs -v` is at least `v12.18.2`
+Make sure that `nodejs -v` is at least `v15.0.1`
 
 Then install node modules
 ```
