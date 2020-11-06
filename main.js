@@ -6,6 +6,23 @@ const archiveUtils = require('./src/archive-utils.js');
 const configUtils = require('./src/config-utils.js');
 const tidyPagesUtils = require('./src/tidy-pages-utils.js');
 
+var ON_DEATH = require('death');
+
+ON_DEATH(function(signal, err) {
+  // clean up code here
+  handleKill(pageDownloader.kill(), "page")
+  handleKill(archiveUtils.kill(), "archive")
+  handleKill(videoDownloader.kill(), "video")
+})
+
+function handleKill(data, fileDirectory) {
+  const {running, current, previous} = data
+  if (running) {
+    console.log(`\n\n\n\n\n\n\n\n\n\n\n\n\n\n! early exit from script !\nsaved partial log for ${fileDirectory} task`);
+    fileUtils.saveFile(fileDirectory, fileUtils.joinErrorUrls(current, previous))
+  }
+}
+
 async function runPages(pages, options) {
   const useAdblock = !options.noadblock;
   const pageUrlsToSkip = fileUtils.readFile("page")

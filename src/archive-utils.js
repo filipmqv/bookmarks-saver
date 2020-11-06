@@ -8,6 +8,10 @@ const progressBar = new cliProgress.SingleBar({
   format: '{percentage}% | {value}/{total}',
 }, cliProgress.Presets.shades_classic);
 
+var running = false
+var archivePages = []
+var failedUrlsGlobal = []
+
 async function checkArchive(urlToCheck) {
   // check if archive.org contains snapshot of page with given url
   // returns url to retrieve that page from archive.org
@@ -28,11 +32,13 @@ async function checkArchive(urlToCheck) {
 }
 
 async function checkPagesInArchive(pages, failedUrls, alreadyChecked) { 
+  running = true
+  failedUrlsGlobal = failedUrls
   const pagesNumber = pages.length;
   console.log(`\nchecking archive for ${pagesNumber} pages`);
   progressBar.start(pagesNumber, 0);
 
-  var archivePages = []
+  archivePages = []
   for (const page of pages) {
     progressBar.increment();
     if (failedUrls.simple.includes(page.url)) {
@@ -47,7 +53,12 @@ async function checkPagesInArchive(pages, failedUrls, alreadyChecked) {
     }
   }
   progressBar.stop();
+  running = false
   return archivePages
 }
 
-module.exports = { checkPagesInArchive }
+function kill() {
+  return {running: running, current:archivePages, previous:failedUrlsGlobal}
+}
+
+module.exports = { checkPagesInArchive, kill }

@@ -10,6 +10,8 @@ const fs = require('fs');
 const EXTRA_MARGIN = 31; // additional margin in px added to bootom of page due to some error in browser resulting in webpage not fitting perfectly into pdf page
 
 var errorUrls = []
+var errorUrlsToSkipGlobal = []
+var running = false
 
 function pdfFileName(filePath, fileName) {
   return `${filePath}/${fileName}.pdf`
@@ -145,7 +147,9 @@ async function initClusterTask(cluster, blocker, errorUrlsToSkip) {
 }
 
 async function downloadPages(pages, errorUrlsToSkip, useAdblock) {
+  running = true
   errorUrls = []
+  errorUrlsToSkipGlobal = errorUrlsToSkip
   const cluster = await initCluster()
   const blocker = useAdblock ? await initUblock() : undefined
   await initClusterTask(cluster, blocker, errorUrlsToSkip)
@@ -162,7 +166,12 @@ async function downloadPages(pages, errorUrlsToSkip, useAdblock) {
 
   await cluster.idle();
   await cluster.close();
+  running = false
   return errorUrls;
 }
 
-module.exports = { downloadPages, pdfFileName }
+function kill() {
+  return {running: running, current:errorUrls, previous:errorUrlsToSkipGlobal}
+}
+
+module.exports = { downloadPages, pdfFileName, kill }

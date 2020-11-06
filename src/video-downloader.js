@@ -9,6 +9,11 @@ const progressBar = new cliProgress.SingleBar({
   format: '{percentage}% | {value}/{total} | ETA: {eta_formatted} | {currentURL}'
 }, cliProgress.Presets.shades_classic);
 
+var running = false
+var errorUrls = []
+var videoUrlsToSkipGlobal = []
+
+
 async function verifyYoutubeDlIsInstalled() {
   try {
     await youtubeDlWrap.execPromise(["--version"])
@@ -98,9 +103,11 @@ async function initYoutubeDl() {
 }
 
 async function downloadVideoList(pages, videoUrlsToSkip) {
+  running = true
+  videoUrlsToSkipGlobal = videoUrlsToSkip
   console.log("\nchecking videos to download");
   var videoUrls = []
-  var errorUrls = []
+  errorUrls = []
   for (const page of pages) {
     if (videoUrlsToSkip.simple.includes(page.url)) {
       // skip
@@ -123,7 +130,12 @@ async function downloadVideoList(pages, videoUrlsToSkip) {
     progressBar.increment();
   }
   progressBar.stop();
+  running = false
   return errorUrls
 }
 
-module.exports = { initYoutubeDl, isUrlYoutubeVideo, downloadVideoList, videoFileName }
+function kill() {
+  return {running: running, current:errorUrls, previous:videoUrlsToSkipGlobal}
+}
+
+module.exports = { initYoutubeDl, isUrlYoutubeVideo, downloadVideoList, videoFileName, kill }
