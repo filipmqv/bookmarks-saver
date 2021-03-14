@@ -7,7 +7,7 @@ www.filmweb.pl##.IRI.rodo__overlay.boardsWrapper
 
 ###ticker > .ytd-masthead.style-scope
 
-youtube.com##ytd-popup-container > paper-dialog.ytd-popup-container[role="dialog"]:has(a[href^="https://support.google.com/youtube/?p=sign_in"])
+youtube.com##ytd-popup-container > paper-dialog.ytd-popup-container
 
 ! web archive baner
 web.archive.org###wm-ipp-base

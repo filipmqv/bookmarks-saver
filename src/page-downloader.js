@@ -1,14 +1,15 @@
 const videoDownloader = require('./video-downloader.js')
+const adblocker = require('./adblocker.js')
+const cookiesManager = require('./cookie.js')
+const { GenericPageSaver } = require('./page-saver/generic.js');
+const { isUrlSpotifyPlaylist, SpotifyPageSaver } = require('./page-saver/spotify.js')
+const { YoutubePageSaver } = require('./page-saver/youtube.js')
 const config = require('config');
-
-const { Cluster } = require('puppeteer-cluster');
-const scrollPageToBottom = require('puppeteer-autoscroll-down');
-import { PuppeteerBlocker } from '@cliqz/adblocker-puppeteer';
-import fetch from 'cross-fetch'; // 'fetch' required for @cliqz/adblocker-puppeteer
-const getFile = require("async-get-file");
 const fs = require('fs');
-const EXTRA_MARGIN = 31; // additional margin in px added to bootom of page due to some error in browser resulting in webpage not fitting perfectly into pdf page
+const { Cluster } = require('puppeteer-cluster');
+const getFile = require("async-get-file");
 
+// global variables for handling errors and killing process
 var errorUrls = []
 var errorUrlsToSkipGlobal = []
 var running = false
@@ -17,60 +18,35 @@ function pdfFileName(filePath, fileName) {
   return `${filePath}/${fileName}.pdf`
 }
 
-async function _handleYoutubePage(page) {
-  // for youtube pages wait for comments section to load
-  await page.waitForSelector('#comments');
-
-  let div_selector_to_remove = "ytd-popup-container > paper-dialog.ytd-popup-container";
-  await page.evaluate((sel) => {
-    let element = document.querySelector(sel);
-    if (element) {
-      element.parentNode.removeChild(element);
-    }
-  }, div_selector_to_remove);
-  return page;
+function domainFromURL(url) {
+  // returns domain with dot at the beginning. Used for filtering cookies.
+  let urlObject = new URL(url);
+  const cookieDomain = urlObject.hostname.split(".").slice(-2).join(".")
+  return `.${cookieDomain}`
 }
 
-async function _savePageAsPdf(page, url, fullFileName) {
-  // console.log(new Date().toString(), "beginning");
-  await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 })
-  const response = await page.goto(url, { timeout: config.get('taskTimeout'), waitUntil: 'networkidle2' });
-  // console.log(new Date().toString(), "got page");
-  if (response._status < 400) {
-    await page.emulateMediaType('screen');
-    await scrollPageToBottom(page);
-    // console.log(new Date().toString(), "scrolled");
-
-    if (videoDownloader.isUrlYoutubeVideo(url)) {
-      page = await _handleYoutubePage(page)
-    }
-
-    await page.waitFor(3000);
-    // console.log(new Date().toString(), "passed extra wait");
-
-    let _height = await page.evaluate(() => document.documentElement.offsetHeight);
-    let height = _height > 1080 ? _height : 1080
-    let width = await page.evaluate(() => document.documentElement.offsetWidth);
-
-    await page.pdf({
-      path: fullFileName,
-      printBackground: true,
-      margin: 'none',
-      height: `${height + EXTRA_MARGIN}px`,
-      width: `${width}px`
-    });
-    // console.log(new Date().toString(), "pdf done");
+async function chooseSaver(url, page, fullFileName) {
+  const taskTimeout = config.get('taskTimeout')
+  args = [page, taskTimeout, fullFileName]
+  if (videoDownloader.isUrlYoutubeVideo(url)) {
+    return new YoutubePageSaver(...args)
   }
-  return url;
+  if (isUrlSpotifyPlaylist(url)) {
+    return new SpotifyPageSaver(...args)
+  }
+  return new GenericPageSaver(...args)
 }
 
-async function savePageAsPdf(page, url, filePath, title, originalUrl = undefined) {
+async function savePageAsPdf(page, url, filePath, title, cookies, originalUrl = undefined) {
   const fullFileName = pdfFileName(filePath, title)
+  if (fs.existsSync(fullFileName)) {
+    return
+  }
+
   try {
-    if (fs.existsSync(fullFileName)) {
-      return
-    }
-    return await _savePageAsPdf(page, url, fullFileName)
+    const domainCookies = await cookiesManager.cookiesForDomain(cookies, domainFromURL(url))
+    const saver = await chooseSaver(url, page, fullFileName)
+    return await saver.savePageAsPdf(url, domainCookies)
   } catch (err) {
     var errorObject = { timestamp: new Date().toISOString(), url: url, title: title, path: filePath, error: err, message: err.message, name: err.name }
     if (originalUrl) {
@@ -82,6 +58,7 @@ async function savePageAsPdf(page, url, filePath, title, originalUrl = undefined
 }
 
 async function downloadPdf(url, dir, title) {
+  // url already points to PDF file, just download it
   const fullFileName = pdfFileName(dir, title)
   if (fs.existsSync(fullFileName)) {
     return
@@ -95,14 +72,23 @@ async function downloadPdf(url, dir, title) {
   });
 }
 
-async function initUblock() {
-  let blocker = await PuppeteerBlocker.fromPrebuiltAdsAndTracking(fetch)
+async function initClusterTask(cluster, blocker, errorUrlsToSkip, cookies) {
+  await cluster.task(async ({ page, data }) => {
+    const { url, dir, title, originalUrl } = data;
 
-  const filtersList = fs.readFileSync("config/adblock/filters-list.txt", 'utf8').split("\n").filter(Boolean) // filter removes empty lines
-  blocker = await PuppeteerBlocker.fromLists(fetch, filtersList);
-
-  blocker = PuppeteerBlocker.parse(fs.readFileSync('config/adblock/custom-filters.txt', 'utf-8'));
-  return blocker
+    if (url.includes("file://")) {
+      // skip
+    } else if (errorUrlsToSkip.simple.includes(url)) {
+      // skip
+    } else if (url.endsWith(".pdf")) {
+      await downloadPdf(url, dir, title)
+    } else {
+      if (blocker) {
+        await blocker.enableBlockingInPage(page);
+      }
+      await savePageAsPdf(page, url, dir, title, cookies, originalUrl);
+    }
+  });
 }
 
 async function initCluster() {
@@ -127,32 +113,15 @@ async function initCluster() {
   return cluster
 }
 
-async function initClusterTask(cluster, blocker, errorUrlsToSkip) {
-  await cluster.task(async ({ page, data }) => {
-    if (blocker) {
-      await blocker.enableBlockingInPage(page);
-    }
-    const { url, dir, title, originalUrl } = data;
-
-    if (url.includes("file://")) {
-      // skip
-    } else if (errorUrlsToSkip.simple.includes(url)) {
-      // skip
-    } else if (url.endsWith(".pdf")) {
-      await downloadPdf(url, dir, title)
-    } else {
-      await savePageAsPdf(page, url, dir, title, originalUrl);
-    }
-  });
-}
-
 async function downloadPages(pages, errorUrlsToSkip, useAdblock) {
   running = true
   errorUrls = []
   errorUrlsToSkipGlobal = errorUrlsToSkip
+
+  const cookies = cookiesManager.allCookies()
   const cluster = await initCluster()
-  const blocker = useAdblock ? await initUblock() : undefined
-  await initClusterTask(cluster, blocker, errorUrlsToSkip)
+  const blocker = useAdblock ? await adblocker.initUblock() : undefined
+  await initClusterTask(cluster, blocker, errorUrlsToSkip, cookies)
 
   for (const page of pages) {
     const data = {

@@ -1,11 +1,13 @@
 const config = require('config');
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
+const configDirectory = 'config'
 
 const optionDefinitions = [
   { name: 'help', alias: 'h', type: Boolean, description: 'Show options' },
-  { name: 'bookmarks', alias: 'b', type: String, description: 'Name of the file with bookmarks. Default is `bookmarks.html`' },
+  { name: 'bookmarks', alias: 'b', type: String, description: `Name of the file with bookmarks. Default is ${config.get('bookmarks.fileName')}` },
   { name: 'noadblock', type: Boolean, description: 'Do not block ads (disable adblock).' },
+  { name: 'cookies', alias: 'c', type: String, description: `Name of the file with cookies. Default is ${config.get('cookiesFileName')}` },
   // Can download single URL instead of parsing bookmarks file
   { name: 'url', alias: 'u', type: String, description: 'Provide single URL to download' },
   { name: 'name', alias: 'n', type: String, description: 'Provide filename for single URL to download' },
@@ -26,6 +28,8 @@ options.runVideos = options.videos || options.allScript
 options.runArchive = options.archive || options.allScript
 
 options.bookmarksFileName = options.bookmarks || config.get('bookmarks.fileName');
+const cookiesFileName = options.cookies || config.get('cookiesFileName');
+options.cookiesFilePath = `${configDirectory}/${cookiesFileName}`
 
 const sections = [
   { header: 'Bookmarks-saver', content: 'Archives pages and videos from your bookmarks.' },

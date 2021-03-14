@@ -55,6 +55,16 @@ You can change number of pages that are downloaded concurrently - check `concurr
 - `custom-filters.txt` is for providing your own rules for adblock https://help.eyeo.com/adblockplus/how-to-write-filters
 - `filters-list.txt` is a list of URLs from where filters will be downloaded. By default it contains some filters from https://majkiit.github.io/polish-ads-filter/
 
+### Cookies
+
+You can export cookies from your browser to a Netscape format file (e.g. using Firefox extension https://addons.mozilla.org/pl/firefox/addon/cookies-txt/) and put this file to `config` directory. Name of this file is customizable (`cookies.txt` by default). With this file, the script will be able to act as logged in user (as you) and gain access to your personal data on websites (e.g. your favourite songs playlist on Spotify).
+
 ## Logs
 
 Any page or video that failed to be downloaded, will be listed in `log-{timestamp}.json` file in `log/page` or `log/video` directories after the script finishes. Newest file is also used as a list to skip urls in future script executions. Additionally script collects urls that were found in archive, so that they are re-checked every time.
+
+## Custom page downloaders
+
+For those pages downloader has some special behaviour:
+- youtube video page - slower scroll do obtain comments (max 20 seconds of scrolling)
+- spotify playlists and favourite songs - generate additional JSON file with song titles, artists, albums. 
