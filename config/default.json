@@ -3,5 +3,6 @@
         "fileName": "bookmarks.html"
     },
     "concurrency": 4,
-    "taskTimeout": 90000
+    "taskTimeout": 90000,
+    "cookiesFileName": "cookies.txt"
 }

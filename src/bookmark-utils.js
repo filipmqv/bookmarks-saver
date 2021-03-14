@@ -8,6 +8,11 @@ function cleanTitle(title) {
   return title.replace(/[^a-z0-9_\-ąćęłńóśźż]/gi, '_');
 }
 
+function cleanPath(title) {
+  // replace "/" sign so that node is not interpreted as new node in path
+  return title.replace(/[\/]/gi, '_');
+}
+
 function directoryFromBookmarks(pathList) {
   // creates path from list of folders. Ensures that all directories along the path exist
   const dir = MAIN_DIST_DIR + '/' + pathList.join('/');
@@ -20,8 +25,8 @@ function flatBookmarks(bookmarks, flatList, root) {
   bookmarks.forEach(function (item, index) {
     if (item.type == 'bookmark') {
       flatList.push({ 'url': item.url, 'title': item.title, 'path': root })
-    } else {
-      var newRoot = root.concat(item.title)
+    } else { // item is a directory - recursively search it
+      var newRoot = root.concat(cleanPath(item.title))
       flatList = flatBookmarks(item.children, flatList, newRoot)
     }
   });
@@ -32,9 +37,10 @@ function cleanPages(pages) {
   // cleans title and makes sure that directory exists
   var result = []
   for (const page of pages) {
+    const title = cleanTitle(page.title || page.url.substring(0,100))
     result.push({
       url: page.url,
-      title: cleanTitle(page.title),
+      title: title,
       path: directoryFromBookmarks(page.path)
     })
   }
@@ -49,4 +55,4 @@ function getPages(bookmarksFileName) {
   return cleanPages(pages)
 }
 
-module.exports = { directoryFromBookmarks, getPages }
+module.exports = { getPages }

@@ -27,7 +27,9 @@ async function runPages(pages, options) {
   const useAdblock = !options.noadblock;
   const pageUrlsToSkip = fileUtils.readFile("page")
   const pageUrlErrors = await pageDownloader.downloadPages(pages, pageUrlsToSkip, useAdblock)
-  fileUtils.saveFile("page", fileUtils.joinErrorUrls(pageUrlErrors, pageUrlsToSkip))
+  if (pageUrlErrors.length>0) {
+    fileUtils.saveFile("page", fileUtils.joinErrorUrls(pageUrlErrors, pageUrlsToSkip))
+  }
 }
 
 function manualUrl(options) {
@@ -49,25 +51,29 @@ function pagesFromBookmarks(options) {
   return pages
 }
 
+function getPages(options) {
+  try {
+    return options.url ? manualUrl(options) : pagesFromBookmarks(options)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
 (async () => {
   const options = configUtils.options
   if (options.help) {
     console.log(configUtils.usage);
-    return;
+    return
   }
 
   if (options.runVideos) {
     await videoDownloader.initYoutubeDl()
   }
 
-  var pagesVar
-  try {
-    pagesVar = options.url ? manualUrl(options) : pagesFromBookmarks(options)
-  } catch (error) {
-    console.log(error)
+  const pages = getPages(options)
+  if (!pages) {
     return
   }
-  const pages = pagesVar
 
   if (options.runTidyPages) {
     await tidyPagesUtils.runTidyPages(pages, options.bookmarksFileName)
