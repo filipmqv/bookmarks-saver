@@ -39,10 +39,10 @@ function manualUrl(options) {
 function pagesFromBookmarks(options) {
   var pages = []
   try {
-    pages = bookmarkUtils.getPages(options.bookmarksFileName)
+    pages = bookmarkUtils.getPages(options.bookmarksFilePath)
   } catch (error) {
     if (error.code === 'ENOENT') {
-      throw `Cannot find file ${options.bookmarksFileName}`
+      throw `Cannot find file ${options.bookmarksFilePath}`
     } else {
       throw error;
     }
@@ -76,7 +76,7 @@ function getPages(options) {
   }
 
   if (options.runTidyPages) {
-    await tidyPagesUtils.runTidyPages(pages, options.bookmarksFileName)
+    await tidyPagesUtils.runTidyPages(pages, options.bookmarksFilePath)
   }
 
   if (options.runPages) {

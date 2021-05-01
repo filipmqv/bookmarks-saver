@@ -27,9 +27,11 @@ options.runTidyPages = options.tidy || options.allScript
 options.runVideos = options.videos || options.allScript
 options.runArchive = options.archive || options.allScript
 
-options.bookmarksFileName = options.bookmarks || config.get('bookmarks.fileName');
+const bookmarksFileName = options.bookmarks || config.get('bookmarks.fileName');
+options.bookmarksFilePath = `${configDirectory}/${bookmarksFileName}`
 const cookiesFileName = options.cookies || config.get('cookiesFileName');
 options.cookiesFilePath = `${configDirectory}/${cookiesFileName}`
+options.outputDirectory = config.get('outputDirectory');
 
 const sections = [
   { header: 'Bookmarks-saver', content: 'Archives pages and videos from your bookmarks.' },

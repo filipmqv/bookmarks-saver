@@ -15,6 +15,7 @@ var errorUrlsToSkipGlobal = []
 var running = false
 
 function pdfFileName(filePath, fileName) {
+  // filePath should already contain OUTPUT dir
   return `${filePath}/${fileName}.pdf`
 }
 

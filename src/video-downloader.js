@@ -23,6 +23,7 @@ async function verifyYoutubeDlIsInstalled() {
 }
 
 function videoFileName(dir, fileName) {
+  // dir should already contain OUTPUT dir
   return dir ? `${dir}/${fileName}.mp4` : `${fileName}.mp4`
 }
 

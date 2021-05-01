@@ -4,6 +4,12 @@ const bookmarkUtils = require('./bookmark-utils.js');
 const pageDownloader = require('./page-downloader.js');
 const videoDownloader = require('./video-downloader.js');
 const BOOKMARKS_DIR = "bookmarks"
+const configUtils = require('./config-utils.js');
+const OUTPUT_DIR = configUtils.options.outputDirectory
+
+function getBookmarksDir() {
+  return `${OUTPUT_DIR}/${BOOKMARKS_DIR}`
+}
 
 async function differenceInner(arr1, arr2) {
   var keys2 = {};
@@ -135,13 +141,13 @@ async function tidyPages(old_pages, pages) {
 async function runTidyPages(pages, pagesFileName) {
   console.log(`\ntidying directories (moved, updated, deleted pages and videos)`);
 
-  const oldPagesFilePath = fileUtils.newestFileName(BOOKMARKS_DIR)
+  const oldPagesFilePath = fileUtils.newestFileName(getBookmarksDir())
   if (oldPagesFilePath) {
     const oldPages = bookmarkUtils.getPages(oldPagesFilePath)
     await tidyPages(oldPages, pages)
   }
   const date = new Date().toISOString();
-  fileUtils.copyFile(pagesFileName, `${BOOKMARKS_DIR}/bookmarks-${date}.html`)
+  fileUtils.copyFile(pagesFileName, `${getBookmarksDir()}/bookmarks-${date}.html`)
 }
 
 module.exports = { runTidyPages }

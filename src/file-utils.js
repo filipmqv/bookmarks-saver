@@ -1,7 +1,13 @@
 const fs = require('fs');
-const MAIN_LOG_DIR = 'log'
+const configUtils = require('./config-utils.js');
+const OUTPUT_DIR = configUtils.options.outputDirectory
+const LOG_DIR = 'log'
 const FILENAME_PREFIX = 'log'
 const TRASHBIN_DIR = 'dist-deleted'
+
+function getLogDir(directory) {
+  return `${OUTPUT_DIR}/${LOG_DIR}/${directory}`
+}
 
 function ensureDirectory(dir) {
   // creates directory if it does not exist
@@ -26,7 +32,7 @@ function newestFileName(directory) {
 
 function readFile(folder) {
   // ensures that directory for log files exists and tries to read single, most recent file (by name)
-  const directory = `${MAIN_LOG_DIR}/${folder}`
+  const directory = getLogDir(folder)
   var urlsToSkip = {detailed: [], simple: []}
   const newestErrorFile = newestFileName(directory)
   if (newestErrorFile) {
@@ -38,7 +44,7 @@ function readFile(folder) {
 
 function saveFile(folder, content) {
   // save to file all current errors and urls skipped because of errors in previous executions
-  const directory = `${MAIN_LOG_DIR}/${folder}`
+  const directory = getLogDir(folder)
   ensureDirectory(directory);
   let data = JSON.stringify(content);
   var date = new Date().toISOString();
