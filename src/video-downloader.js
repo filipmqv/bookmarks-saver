@@ -93,7 +93,6 @@ async function downloadVideo(url, dir, fileName) {
   await youtubeDlWrap.execPromise([url,
     "-f", "best",
     "-o", filepath,
-    // todo uncomment "--download-archive", "config/downloaded-videos-archive.txt"
   ]),
     "--no-playlist"
 }

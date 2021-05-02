@@ -8,11 +8,8 @@ Script logs errors in `log` directory - more in [Logs](#logs) section.
 
 ## Install
 
-Install npm and nodejs first (example command for Ubuntu):
-```
-sudo apt install nodejs npm
-```
-Make sure that `nodejs -v` is at least `v15.0.1`
+Install npm and nodejs first - instructions here https://github.com/nodesource/distributions/blob/master/README.md
+Make sure that `node -v` is at least `v15.0.1`
 
 Then install node modules
 ```
@@ -23,12 +20,14 @@ Also install `youtube-dl` library - http://ytdl-org.github.io/youtube-dl/downloa
 
 ## Run
 
-First, export bookmarks from your browser to HTML file. Put file with bookmarks in root directory of this app. Name of the file by default should be `bookmarks.html` (can be customized).
+First, export bookmarks from your browser to HTML file. Put file with bookmarks in `config` directory of this app. Name of the file by default should be `bookmarks.html` (can be customized).
 
 To run the script:
 ```
 node index.js
 ```
+
+You will find saved bookmarks (PDF, videos) and logs in `output` directory.
 
 ## Customize
 
@@ -44,10 +43,6 @@ You can change bookmarks file name.
 ### Page downloader
 
 You can change number of pages that are downloaded concurrently - check `concurrency` option. For best performance set it to number of CPU cores.
-
-### Video downloader
-
-`config/downloaded-videos-archive.txt` is a an output file of `youtube-dl` script and contains list of successfully downloaded videos. Those will be ommited during next script execution. For more info check https://github.com/ytdl-org/youtube-dl -> `--download-archive FILE` param.
 
 ### Adblock
 

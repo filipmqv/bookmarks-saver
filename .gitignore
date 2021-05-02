@@ -112,3 +112,5 @@ log*
 .vscode
 cookies.txt
 code-samples.js
+config-prd
+config-test

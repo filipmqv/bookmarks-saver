@@ -1,4 +1,4 @@
-let { CookieMap } = require('cookiefile')
+let { CookieMap } = require('./utils/cookiefile/http-cookiefile.js')
 const { options } = require('./config-utils')
 const cookiesFilePath = options.cookiesFilePath
 
