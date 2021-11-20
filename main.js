@@ -33,7 +33,7 @@ async function runPages(pages, options) {
 }
 
 function manualUrl(options) {
-  return [{ url: options.url, title: options.name || "my Page", path: [""] }]
+  return [{ url: options.url, title: options.name || "my Page", path: bookmarkUtils.directoryFromPathList() }]
 }
 
 function pagesFromBookmarks(options) {

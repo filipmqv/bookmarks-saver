@@ -99,6 +99,7 @@ async function initCluster() {
     timeout: config.get('taskTimeout'),
     monitor: true, // provides info about downloading progress
     puppeteerOptions: {
+      executablePath: './node_modules/chromium/lib/chromium/chrome-linux/chrome',
       // headless: false, // with false, you can see the page content, but cannot save PDF...
       pipe: true,
       args: [

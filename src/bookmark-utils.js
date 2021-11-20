@@ -6,7 +6,7 @@ const configUtils = require('./config-utils.js');
 const OUTPUT_DIR = configUtils.options.outputDirectory
 
 function getDistDir(directory) {
-  return `${OUTPUT_DIR}/${MAIN_DIST_DIR}/${directory}`
+  return directory ? `${OUTPUT_DIR}/${MAIN_DIST_DIR}/${directory}` : `${OUTPUT_DIR}/${MAIN_DIST_DIR}`
 }
 
 function cleanTitle(title) {
@@ -21,7 +21,8 @@ function cleanPath(title) {
 
 function directoryFromPathList(pathList) {
   // creates path from list of folders. Ensures that all directories along the path exist
-  const dir = getDistDir(pathList.join('/'))
+  const path = pathList ? pathList.join('/') : ""
+  const dir = getDistDir(path)
   fileUtils.ensureDirectory(dir);
   return dir;
 }
@@ -61,4 +62,4 @@ function getPages(bookmarksFilePath) {
   return cleanPages(pages)
 }
 
-module.exports = { getPages }
+module.exports = { getPages, directoryFromPathList }
