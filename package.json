@@ -23,7 +23,7 @@
     "command-line-args": "^5.1.1",
     "command-line-usage": "^6.1.0",
     "config": "^3.3.1",
-    "cross-fetch": "^3.0.6",
+    "cross-fetch": "^3.1.5",
     "death": "^1.1.0",
     "esm": "^3.2.25",
     "isnumeric": "^0.3.3",
